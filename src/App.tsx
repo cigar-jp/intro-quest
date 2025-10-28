@@ -45,25 +45,25 @@ export default function App() {
   const [npcs, setNpcs] = useState<NPC[]>([
     {
       id: 1,
-      name: '村人A',
+      name: 'フィナ王',
       position: { x: 8, y: 4 },
-      message: 'ようこそ、勇者様！\nこの村へようこそ！',
+      message: 'おーワカナよ\n吐いてしまうとはなさけない',
       color: '#4a9eff',
       direction: 'down'
     },
     {
       id: 2,
-      name: '商人',
+      name: 'ハルテック',
       position: { x: 12, y: 7 },
-      message: '今日は良い天気ですね。\n冒険日和ですよ！',
+      message: 'ワカナさんは当時取引先だった旦那さまと出会って\n1ヶ月で付き合ったんだって！',
       color: '#ff6b6b',
       direction: 'left'
     },
     {
       id: 3,
-      name: '老人',
+      name: 'レイゾウ',
       position: { x: 3, y: 9 },
-      message: '北の洞窟には危険な魔物が\n住んでいると聞いたぞ...',
+      message: 'ここだけの話...\nわかなさんは学生は結構クソだったらしい。\nバイトも１年続いたことないわ、飛ぶわ。\n\n前職のTOTOで９年も続いたことがびっくりされたそうだよ。',
       color: '#95e1d3',
       direction: 'right'
     }
