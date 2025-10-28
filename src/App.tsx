@@ -22,6 +22,8 @@ export interface NPC {
   direction: Direction;
 }
 
+type GamePhase = 'title' | 'intro1' | 'intro2' | 'play';
+
 // マップの障害物データ（1=障害物あり、0=通行可能）
 const MAP_OBSTACLES = [
   [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -42,6 +44,7 @@ export default function App() {
   const [playerPos, setPlayerPos] = useState<Position>({ x: 5, y: 5 });
   const [playerDirection, setPlayerDirection] = useState<Direction>('down');
   const [walkFrame, setWalkFrame] = useState(0);
+  const [gamePhase, setGamePhase] = useState<GamePhase>('title');
   const [npcs, setNpcs] = useState<NPC[]>([
     {
       id: 1,
@@ -74,15 +77,56 @@ export default function App() {
   const soundRef = useRef<{ playWalk: () => void; playTalk: () => void; playMenuOpen: () => void } | null>(null);
   const keysPressed = useRef<Set<string>>(new Set());
   const lastMoveTime = useRef(0);
+  const introMessageShownRef = useRef(false);
+  const pendingIntroTalkRef = useRef(false);
+
+  useEffect(() => {
+    setGamePhase('title');
+    setCurrentMessage(null);
+    introMessageShownRef.current = false;
+    pendingIntroTalkRef.current = false;
+    keysPressed.current.clear();
+    setPlayerPos({ x: 5, y: 5 });
+    setPlayerDirection('down');
+    setWalkFrame(0);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        if (gamePhase === 'title') {
+          e.preventDefault();
+          setGamePhase('intro1');
+          return;
+        }
+
+        if (gamePhase === 'intro1') {
+          e.preventDefault();
+          setGamePhase('intro2');
+          return;
+        }
+
+        if (gamePhase === 'intro2') {
+          e.preventDefault();
+          setPlayerPos({ x: 8, y: 5 });
+          setPlayerDirection('up');
+          setWalkFrame(0);
+          lastMoveTime.current = Date.now();
+          setGamePhase('play');
+          return;
+        }
+      }
+
+      if (gamePhase !== 'play') {
+        return;
+      }
+
       keysPressed.current.add(e.key);
 
       // スペースキーでNPCに話しかける
       if (e.key === ' ' && !currentMessage) {
-        const nearbyNPC = npcs.find(npc => 
-          Math.abs(npc.position.x - playerPos.x) <= 1 && 
+        const nearbyNPC = npcs.find((npc) =>
+          Math.abs(npc.position.x - playerPos.x) <= 1 &&
           Math.abs(npc.position.y - playerPos.y) <= 1
         );
         if (nearbyNPC) {
@@ -100,6 +144,9 @@ export default function App() {
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
+      if (gamePhase !== 'play') {
+        return;
+      }
       keysPressed.current.delete(e.key);
     };
 
@@ -110,9 +157,13 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [npcs, playerPos, currentMessage, soundEnabled]);
+  }, [gamePhase, npcs, playerPos, currentMessage, soundEnabled]);
 
   useEffect(() => {
+    if (gamePhase !== 'play') {
+      return;
+    }
+
     const moveInterval = setInterval(() => {
       if (currentMessage) return; // メッセージ表示中は移動不可
 
@@ -173,7 +224,32 @@ export default function App() {
     }, 50);
 
     return () => clearInterval(moveInterval);
-  }, [playerPos, playerDirection, npcs, currentMessage, soundEnabled]);
+  }, [playerPos, playerDirection, npcs, currentMessage, soundEnabled, gamePhase]);
+
+  useEffect(() => {
+    if (gamePhase !== 'play') {
+      keysPressed.current.clear();
+    }
+  }, [gamePhase]);
+
+  useEffect(() => {
+    if (gamePhase !== 'play' || introMessageShownRef.current) {
+      return;
+    }
+
+    introMessageShownRef.current = true;
+    const finaKing = npcs.find((npc) => npc.name === 'フィナ王');
+    if (finaKing) {
+      setCurrentMessage(finaKing.message);
+      if (soundEnabled) {
+        if (soundRef.current) {
+          soundRef.current.playTalk();
+        } else {
+          pendingIntroTalkRef.current = true;
+        }
+      }
+    }
+  }, [gamePhase, npcs, soundEnabled]);
 
   const updateNPC = (id: number, message: string) => {
     setNpcs(npcs.map(npc => 
@@ -188,6 +264,29 @@ export default function App() {
     }
   };
 
+  const renderOverlay = () => {
+    if (gamePhase === 'title') {
+      return (
+        <div className=" inset-0 bg-black text-white flex flex-col items-center justify-center gap-6">
+          <div className="text-3xl font-bold tracking-[0.4em]">INTRO QUEST</div>
+          <div className="text-sm text-white/70">Enterで始める</div>
+        </div>
+      );
+    }
+
+    if (gamePhase === 'intro1' || gamePhase === 'intro2') {
+      const introText = gamePhase === 'intro1' ? '...く...い' : '…くるしい…';
+      return (
+        <div className=" inset-0 bg-black text-white flex flex-col items-center justify-center gap-6">
+          <div className="text-lg whitespace-pre text-center">{introText}</div>
+          <div className="text-xs text-white/60">Enterで進む</div>
+        </div>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="relative">
@@ -197,26 +296,32 @@ export default function App() {
         )}
         
         {/* ゲーム画面 */}
-        <div className="relative border-8 border-[#2c2c2c] rounded-lg overflow-hidden shadow-2xl">
-          <GameMap 
-            playerPos={playerPos} 
-            playerDirection={playerDirection}
-            walkFrame={walkFrame}
-            npcs={npcs} 
-            obstacles={MAP_OBSTACLES}
-          />
-          {currentMessage && <MessageBox message={currentMessage} />}
-          
-          {/* 操作説明 */}
-          <div className="absolute top-2 left-2 bg-black/80 text-white px-3 py-2 rounded text-xs font-mono">
-            <div>矢印キー: 移動</div>
-            <div>スペース: 話しかける</div>
-            <div>Enter: メッセージを閉じる</div>
-          </div>
+        <div className="relative border-8 border-[#2c2c2c] rounded-lg overflow-hidden shadow-2xl w-[512px] h-[384px]">
+          {gamePhase === 'play' && (
+            <>
+              <GameMap 
+                playerPos={playerPos} 
+                playerDirection={playerDirection}
+                walkFrame={walkFrame}
+                npcs={npcs} 
+                obstacles={MAP_OBSTACLES}
+              />
+              {currentMessage && <MessageBox message={currentMessage} />}
+
+              {/* 操作説明 */}
+              <div className="absolute top-2 left-2 bg-black/80 text-white px-3 py-2 rounded text-xs font-mono">
+                <div>矢印キー: 移動</div>
+                <div>スペース: 話しかける</div>
+                <div>Enter: メッセージを閉じる</div>
+              </div>
+            </>
+          )}
+
+          {renderOverlay()}
         </div>
 
         {/* コントロールボタン */}
-        <div className="absolute -top-12 right-0 flex gap-2">
+        <div className="hidden absolute -top-12 right-0 flex gap-2">
           <Button
             onClick={() => setSoundEnabled(!soundEnabled)}
             variant="outline"
