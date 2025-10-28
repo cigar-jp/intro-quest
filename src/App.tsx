@@ -130,7 +130,7 @@ export default function App() {
 
       // スペースキーでNPCに話しかける
       if (e.key === ' ' && !currentMessage) {
-        const nearbyNPC = npcs.find((npc) =>
+        const nearbyNPC = npcs.find((npc: NPC) =>
           Math.abs(npc.position.x - playerPos.x) <= 1 &&
           Math.abs(npc.position.y - playerPos.y) <= 1
         );
@@ -215,12 +215,12 @@ export default function App() {
         }
         
         // NPCとの衝突チェック
-        const collision = npcs.some(npc => 
+        const collision = npcs.some((npc: NPC) => 
           npc.position.x === newX && npc.position.y === newY
         );
         if (!collision && moved) {
           setPlayerPos({ x: newX, y: newY });
-          setWalkFrame((prev) => (prev + 1) % 2);
+          setWalkFrame((prev: number) => (prev + 1) % 2);
           if (soundEnabled && soundRef.current) {
             soundRef.current.playWalk();
           }
@@ -243,7 +243,7 @@ export default function App() {
     }
 
     introMessageShownRef.current = true;
-    const finaKing = npcs.find((npc) => npc.name === 'フィナ王');
+  const finaKing = npcs.find((npc: NPC) => npc.name === 'フィナ王');
     if (finaKing) {
       setCurrentMessage(finaKing.message);
       if (soundEnabled) {
@@ -257,7 +257,7 @@ export default function App() {
   }, [gamePhase, npcs, soundEnabled]);
 
   const updateNPC = (id: number, message: string) => {
-    setNpcs(npcs.map(npc => 
+    setNpcs(npcs.map((npc: NPC) => 
       npc.id === id ? { ...npc, message } : npc
     ));
   };
