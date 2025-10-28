@@ -94,7 +94,6 @@ export default function App() {
   useEffect(() => {
     const shouldEnable = gamePhase === 'play';
     setSoundEnabled(shouldEnable);
-    setShowEditor(shouldEnable);
   }, [gamePhase]);
 
   useEffect(() => {
@@ -273,7 +272,7 @@ export default function App() {
   const renderOverlay = () => {
     if (gamePhase === 'title') {
       return (
-        <div className=" inset-0 bg-black text-white flex flex-col items-center justify-center gap-6">
+        <div className="bg-black text-white flex flex-col items-center justify-center gap-6">
           <div className="text-3xl font-bold tracking-[0.4em]">INTRO QUEST</div>
           <div className="text-sm text-white/70">Enterで始める</div>
         </div>
@@ -281,9 +280,9 @@ export default function App() {
     }
 
     if (gamePhase === 'intro1' || gamePhase === 'intro2') {
-      const introText = gamePhase === 'intro1' ? '...く...い' : '…くるしい…';
+      const introText = gamePhase === 'intro1' ? '...く...い' : 'くるしい…';
       return (
-        <div className=" inset-0 bg-black text-white flex flex-col items-center justify-center gap-6">
+        <div className="w-1/2 bg-black text-white flex flex-col items-center justify-center gap-6">
           <div className="text-lg whitespace-pre text-center">{introText}</div>
           <div className="text-xs text-white/60">Enterで進む</div>
         </div>
@@ -327,6 +326,7 @@ export default function App() {
         </div>
 
         {/* コントロールボタン */}
+        { gamePhase === 'play' && (
         <div className="hidden absolute -top-12 right-0 flex gap-2">
           <Button
             onClick={() => setSoundEnabled(!soundEnabled)}
@@ -343,7 +343,7 @@ export default function App() {
             <Settings className="w-4 h-4" />
             NPC編集
           </Button>
-        </div>
+        </div>)}
 
         {/* NPC編集パネル */}
         {showEditor && (
