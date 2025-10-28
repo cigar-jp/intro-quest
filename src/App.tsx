@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { GameMap } from './components/GameMap';
 import { MessageBox } from './components/MessageBox';
 import { NPCEditor } from './components/NPCEditor';
@@ -79,6 +79,49 @@ export default function App() {
   const lastMoveTime = useRef(0);
   const introMessageShownRef = useRef(false);
   const pendingIntroTalkRef = useRef(false);
+  const introAudioRef = useRef<AudioContext | null>(null);
+
+  const playIntroAdvanceSound = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const AudioContextConstructor = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextConstructor) {
+      return;
+    }
+
+    if (!introAudioRef.current) {
+      introAudioRef.current = new AudioContextConstructor();
+    }
+
+    const ctx = introAudioRef.current;
+    if (!ctx) {
+      return;
+    }
+
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {
+        /* resume may fail if user interaction is required */
+      });
+    }
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.value = 800;
+
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.1);
+  }, []);
 
   useEffect(() => {
     setGamePhase('title');
@@ -97,22 +140,34 @@ export default function App() {
   }, [gamePhase]);
 
   useEffect(() => {
+    return () => {
+      if (introAudioRef.current) {
+        introAudioRef.current.close();
+        introAudioRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         if (gamePhase === 'title') {
           e.preventDefault();
+          playIntroAdvanceSound();
           setGamePhase('intro1');
           return;
         }
 
         if (gamePhase === 'intro1') {
           e.preventDefault();
+          playIntroAdvanceSound();
           setGamePhase('intro2');
           return;
         }
 
         if (gamePhase === 'intro2') {
           e.preventDefault();
+          playIntroAdvanceSound();
           setPlayerPos({ x: 8, y: 5 });
           setPlayerDirection('up');
           setWalkFrame(0);
@@ -162,7 +217,7 @@ export default function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gamePhase, npcs, playerPos, currentMessage, soundEnabled]);
+  }, [gamePhase, npcs, playerPos, currentMessage, soundEnabled, playIntroAdvanceSound]);
 
   useEffect(() => {
     if (gamePhase !== 'play') {
@@ -243,7 +298,7 @@ export default function App() {
     }
 
     introMessageShownRef.current = true;
-  const finaKing = npcs.find((npc: NPC) => npc.name === 'フィナ王');
+    const finaKing = npcs.find((npc: NPC) => npc.name === 'フィナ王');
     if (finaKing) {
       setCurrentMessage(finaKing.message);
       if (soundEnabled) {
@@ -280,7 +335,7 @@ export default function App() {
     }
 
     if (gamePhase === 'intro1' || gamePhase === 'intro2') {
-      const introText = gamePhase === 'intro1' ? '...く...い' : 'くるしい…';
+      const introText = gamePhase === 'intro1' ? '...く...い' : 'くるしい...';
       return (
         <div className="w-1/2 bg-black text-white flex flex-col items-center justify-center gap-6">
           <div className="text-lg whitespace-pre text-center">{introText}</div>
