@@ -92,6 +92,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const shouldEnable = gamePhase === 'play';
+    setSoundEnabled(shouldEnable);
+    setShowEditor(shouldEnable);
+  }, [gamePhase]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         if (gamePhase === 'title') {
